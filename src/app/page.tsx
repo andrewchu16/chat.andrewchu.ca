@@ -9,6 +9,7 @@ export default function ChatBot() {
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isWaitingForStream, setIsWaitingForStream] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const scrollToBottom = () => {
@@ -29,13 +30,18 @@ export default function ChatBot() {
     const messageContent = inputValue.trim();
     setInputValue('');
     setIsLoading(true);
+    setIsWaitingForStream(true);
 
     try {
+      // Simulate 2 second delay before starting the stream
+      await new Promise(resolve => setTimeout(resolve, 2000));
+
       // Create initial bot message for streaming
       const botMessageId = (Date.now() + 1).toString();
       const initialBotMessage = createBotMessage('', botMessageId, true);
 
       setMessages(prev => [...prev, initialBotMessage]);
+      setIsWaitingForStream(false); // Hide typing bubble when stream starts
 
       // Start SSE connection
       const response = await fetch('/api/chat', {
@@ -111,6 +117,7 @@ export default function ChatBot() {
       
       setMessages(prev => [...prev, errorMessage]);
       setIsLoading(false);
+      setIsWaitingForStream(false);
     }
   };
 
@@ -162,6 +169,18 @@ export default function ChatBot() {
               </div>
             </div>
           ))}
+          
+          {isWaitingForStream && (
+            <div className="flex justify-start">
+              <div className="bg-white dark:bg-gray-800 text-gray-800 dark:text-white border border-gray-200 dark:border-gray-700 px-4 py-2 rounded-lg max-w-xs">
+                <div className="flex space-x-1 items-center">
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
+                  <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                </div>
+              </div>
+            </div>
+          )}
           
           <div ref={messagesEndRef} />
         </div>
