@@ -7,7 +7,7 @@ interface ChatCreateResponse {
 
 export async function POST(request: NextRequest) {
   try {
-    const { message, chatId } = await request.json();
+    const { message, chatId, includeProcessingInfo = true } = await request.json();
     const backendUrl = process.env.BACKEND_URL;
 
     if (!backendUrl) {
@@ -55,6 +55,7 @@ export async function POST(request: NextRequest) {
             const streamUrl = new URL(`${backendUrl}/chat/stream`);
             streamUrl.searchParams.set('chat_id', currentChatId.toString());
             streamUrl.searchParams.set('message_content', message);
+            streamUrl.searchParams.set('include_processing_info', includeProcessingInfo.toString());
 
             const streamResponse = await fetch(streamUrl.toString(), {
               method: 'POST',
@@ -75,6 +76,9 @@ export async function POST(request: NextRequest) {
               throw new Error('No reader available from backend stream');
             }
 
+            let currentEvent = '';
+            let lastMessageId = '';
+            
             while (true) {
               const { done, value } = await reader.read();
               
@@ -84,42 +88,89 @@ export async function POST(request: NextRequest) {
               const lines = chunk.split('\n');
 
               for (const line of lines) {
-                if (line.startsWith('data: ')) {
+                if (line.startsWith('event: ')) {
+                  // Store the current event type
+                  currentEvent = line.slice(7).trim();
+                } else if (line.startsWith('data: ')) {
                   const eventData = line.slice(6);
                   
-                  if (eventData === '[END]') {
-                    // Send completion signal
-                    const doneData = JSON.stringify({ 
-                      type: 'token',
-                      token: '',
-                      done: true,
-                      timestamp: new Date().toISOString()
-                    });
-                    controller.enqueue(`data: ${doneData}\n\n`);
-                    return;
-                  } else if (eventData !== 'streaming') {
-                    // Forward the token from backend
-                    const tokenData = JSON.stringify({
-                      type: 'token',
-                      token: eventData,
-                      done: false,
-                      timestamp: new Date().toISOString()
-                    });
-                    controller.enqueue(`data: ${tokenData}\n\n`);
+                  try {
+                    const parsedData = JSON.parse(eventData);
+                    
+                    if (currentEvent === 'start') {
+                      // Handle start event - just log for now
+                      console.log('Stream started:', parsedData);
+                      
+                    } else if (currentEvent === 'message_created') {
+                      // Store message_id and forward processing event
+                      lastMessageId = parsedData.message_id;
+                      const processingData = JSON.stringify({
+                        type: 'processing_event',
+                        event: 'message_created',
+                        data: parsedData,
+                        timestamp: new Date().toISOString()
+                      });
+                      controller.enqueue(`data: ${processingData}\n\n`);
+                      
+                    } else if (currentEvent === 'processing_started') {
+                      const processingData = JSON.stringify({
+                        type: 'processing_event',
+                        event: 'processing_started',
+                        data: parsedData,
+                        timestamp: new Date().toISOString()
+                      });
+                      controller.enqueue(`data: ${processingData}\n\n`);
+                      
+                    } else if (currentEvent === 'first_token') {
+                      const processingData = JSON.stringify({
+                        type: 'processing_event',
+                        event: 'first_token',
+                        data: parsedData,
+                        timestamp: new Date().toISOString()
+                      });
+                      controller.enqueue(`data: ${processingData}\n\n`);
+                      
+                    } else if (currentEvent === 'processing_completed') {
+                      const processingData = JSON.stringify({
+                        type: 'processing_event',
+                        event: 'processing_completed',
+                        data: parsedData,
+                        timestamp: new Date().toISOString()
+                      });
+                      controller.enqueue(`data: ${processingData}\n\n`);
+                      
+                    } else if (currentEvent === 'done') {
+                      // Handle completion
+                      if (parsedData.content === '[END]') {
+                        const doneData = JSON.stringify({ 
+                          type: 'token',
+                          token: '',
+                          done: true,
+                          message_id: parsedData.message_id || lastMessageId,
+                          timestamp: new Date().toISOString()
+                        });
+                        controller.enqueue(`data: ${doneData}\n\n`);
+                        return;
+                      }
+                      
+                    } else if (currentEvent === '' && parsedData.type === 'token') {
+                      // Handle token data (no event, just data)
+                      const tokenData = JSON.stringify({
+                        type: 'token',
+                        token: parsedData.content,
+                        done: false,
+                        message_id: lastMessageId,
+                        timestamp: new Date().toISOString()
+                      });
+                      controller.enqueue(`data: ${tokenData}\n\n`);
+                    }
+                    
+                  } catch (parseError) {
+                    console.warn('Error parsing SSE data:', parseError, 'Raw data:', eventData);
                   }
-                } else if (line.startsWith('event: ')) {
-                  // Handle event lines (start, done, etc.)
-                  const event = line.slice(7);
-                  if (event === 'done') {
-                    const doneData = JSON.stringify({ 
-                      type: 'token',
-                      token: '',
-                      done: true,
-                      timestamp: new Date().toISOString()
-                    });
-                    controller.enqueue(`data: ${doneData}\n\n`);
-                    return;
-                  }
+                  
+                  // Reset event after processing data
+                  currentEvent = '';
                 }
               }
             }

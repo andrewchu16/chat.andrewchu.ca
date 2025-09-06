@@ -95,55 +95,69 @@ export function MessageBubble({ message }: MessageBubbleProps) {
           </ReactMarkdown>
         </div>
         <div className="text-xs opacity-70 mt-1">
-          <div className="flex items-center space-x-2">
+          <div className="flex items-center space-x-2 flex-wrap">
             <span>
               {message.timestamp.toLocaleTimeString([], {
                 hour: '2-digit',
                 minute: '2-digit',
               })}
             </span>
+            
             {message.isStreaming && (
               <span className="text-xs">Typing...</span>
             )}
+            
+            {/* Show processing stats inline if available and enabled */}
+            {message.showStats && message.processingInfo && !message.isStreaming && (
+              <>
+                {/* Processing time */}
+                {(() => {
+                  const processingTime = calculateProcessingTime(
+                    message.processingInfo.start_timestamp,
+                    message.processingInfo.end_timestamp
+                  );
+                  return processingTime !== null ? (
+                    <span 
+                      className="opacity-60 hover:opacity-100 transition-opacity cursor-help"
+                      title={`Total processing time: ${formatResponseTime(processingTime)}\nTime from when processing started until completion`}
+                    >
+                      • ⏱ {formatResponseTime(processingTime)}
+                    </span>
+                  ) : null;
+                })()}
+                
+                {/* Time to first token */}
+                {(() => {
+                  const firstTokenTime = calculateFirstTokenTime(
+                    message.processingInfo.start_timestamp,
+                    message.processingInfo.first_token_timestamp
+                  );
+                  return firstTokenTime !== null ? (
+                    <span 
+                      className="opacity-60 hover:opacity-100 transition-opacity cursor-help"
+                      title={`Time to first token: ${formatResponseTime(firstTokenTime)}\nTime from processing start until the first word appeared`}
+                    >
+                      • 🚀 {formatResponseTime(firstTokenTime)}
+                    </span>
+                  ) : null;
+                })()}
+                
+                {/* Cache hit info */}
+                {message.cacheInfo && (
+                  <span 
+                    className="opacity-60 hover:opacity-100 transition-opacity cursor-help"
+                    title={`Cache ${message.cacheInfo.hit ? 'hit' : 'miss'}\n${
+                      message.cacheInfo.hit 
+                        ? `This response was found in cache (hit #${message.cacheInfo.num_hits})`
+                        : 'This response was not found in cache and was generated fresh'
+                    }`}
+                  >
+                    • 💾 {message.cacheInfo.hit ? 'hit' : 'miss'}
+                  </span>
+                )}
+              </>
+            )}
           </div>
-          
-          {/* Show processing stats if available and enabled */}
-          {message.showStats && message.processingInfo && !message.isStreaming && (
-            <div className="flex items-center space-x-3 mt-1 text-xs opacity-60">
-              {/* Processing time */}
-              {(() => {
-                const processingTime = calculateProcessingTime(
-                  message.processingInfo.start_timestamp,
-                  message.processingInfo.end_timestamp
-                );
-                return processingTime !== null ? (
-                  <span title="Total processing time">
-                    ⏱ {formatResponseTime(processingTime)}
-                  </span>
-                ) : null;
-              })()}
-              
-              {/* Time to first token */}
-              {(() => {
-                const firstTokenTime = calculateFirstTokenTime(
-                  message.processingInfo.start_timestamp,
-                  message.processingInfo.first_token_timestamp
-                );
-                return firstTokenTime !== null ? (
-                  <span title="Time to first token">
-                    🚀 {formatResponseTime(firstTokenTime)}
-                  </span>
-                ) : null;
-              })()}
-              
-              {/* Cache hit info */}
-              {message.cacheInfo && (
-                <span title={`Cache hits: ${message.cacheInfo.num_hits}`}>
-                  {message.cacheInfo.hit ? '💾 hit' : '💾 miss'}
-                </span>
-              )}
-            </div>
-          )}
         </div>
       </div>
     </div>

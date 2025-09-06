@@ -2,8 +2,8 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Message, createUserMessage, createBotMessage } from '@/models';
+import { MessageProcessingInfo, MessageCacheInfo } from '@/models/chatInfo';
 import { Header, MessageList, ChatInput, InfoStats } from '@/components';
-import { fetchMessageStats } from '@/utils/messageStats';
 
 export default function ChatBot() {
   const [messages, setMessages] = useState<Message[]>([
@@ -54,7 +54,8 @@ export default function ChatBot() {
         },
         body: JSON.stringify({ 
           message: messageContent,
-          chatId: chatId 
+          chatId: chatId,
+          includeProcessingInfo: true
         }),
       });
 
@@ -70,6 +71,8 @@ export default function ChatBot() {
       }
 
       let accumulatedContent = '';
+      const processingInfo: Partial<MessageProcessingInfo> = {};
+      const cacheInfo: Partial<MessageCacheInfo> = {};
 
       while (true) {
         const { done, value } = await reader.read();
@@ -88,6 +91,32 @@ export default function ChatBot() {
                 // Store the chat ID for future messages
                 setChatId(data.chat_id);
                 console.log('Received chat ID:', data.chat_id);
+              } else if (data.type === 'processing_event') {
+                // Handle processing info events
+                console.log('Processing event:', data.event, data.data);
+                
+                if (data.event === 'message_created') {
+                  processingInfo.message_id = data.data.message_id;
+                } else if (data.event === 'processing_started') {
+                  processingInfo.start_timestamp = data.data.start_timestamp;
+                } else if (data.event === 'first_token') {
+                  processingInfo.first_token_timestamp = data.data.first_token_timestamp;
+                } else if (data.event === 'processing_completed') {
+                  processingInfo.end_timestamp = data.data.end_timestamp;
+                  
+                  // Update message with final processing info
+                  setMessages(prev => 
+                    prev.map(msg => 
+                      msg.id === botMessageId 
+                        ? { 
+                            ...msg, 
+                            processingInfo: processingInfo as MessageProcessingInfo,
+                            cacheInfo: Object.keys(cacheInfo).length > 0 ? (cacheInfo as MessageCacheInfo) : undefined
+                          }
+                        : msg
+                    )
+                  );
+                }
               } else if (data.type === 'token') {
                 if (data.done) {
                   // Streaming completed
@@ -99,30 +128,9 @@ export default function ChatBot() {
                     )
                   );
                   setIsLoading(false);
-                  
-                  // Fetch processing stats for the completed message
-                  setTimeout(async () => {
-                    try {
-                      const stats = await fetchMessageStats(botMessageId);
-                      setMessages(prev => 
-                        prev.map(msg => 
-                          msg.id === botMessageId 
-                            ? { 
-                                ...msg, 
-                                processingInfo: stats.processingInfo || undefined,
-                                cacheInfo: stats.cacheInfo || undefined
-                              }
-                            : msg
-                        )
-                      );
-                    } catch (error) {
-                      console.warn('Failed to fetch processing stats:', error);
-                    }
-                  }, 1000); // Delay to allow backend to save stats
-                  
                   break;
                 } else if (data.token) {
-                  // Add token to accumulated content
+                  // Add token to accumulated content (data.token contains the actual text)
                   accumulatedContent += data.token;
                   
                   // Update the streaming message
