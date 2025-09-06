@@ -39,9 +39,9 @@ export function InfoStats() {
     fetchStats();
     
     // Refresh stats every 30 seconds
-    const interval = setInterval(fetchStats, 30000);
+    // const interval = setInterval(fetchStats, 30000);
     
-    return () => clearInterval(interval);
+    // return () => clearInterval(interval);
   }, []);
 
   if (isLoading) {
