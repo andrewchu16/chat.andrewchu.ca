@@ -1,4 +1,5 @@
 import { Message } from '@/models';
+import { calculateProcessingTime, calculateFirstTokenTime, formatResponseTime } from '@/models/chatInfo';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import rehypeHighlight from 'rehype-highlight';
@@ -93,15 +94,57 @@ export function MessageBubble({ message }: MessageBubbleProps) {
             {processedContent}
           </ReactMarkdown>
         </div>
-        <span className="text-xs opacity-70 mt-1 block">
-          {message.timestamp.toLocaleTimeString([], {
-            hour: '2-digit',
-            minute: '2-digit',
-          })}
-          {message.isStreaming && (
-            <span className="ml-2 text-xs">Typing...</span>
+        <div className="text-xs opacity-70 mt-1">
+          <div className="flex items-center space-x-2">
+            <span>
+              {message.timestamp.toLocaleTimeString([], {
+                hour: '2-digit',
+                minute: '2-digit',
+              })}
+            </span>
+            {message.isStreaming && (
+              <span className="text-xs">Typing...</span>
+            )}
+          </div>
+          
+          {/* Show processing stats if available and enabled */}
+          {message.showStats && message.processingInfo && !message.isStreaming && (
+            <div className="flex items-center space-x-3 mt-1 text-xs opacity-60">
+              {/* Processing time */}
+              {(() => {
+                const processingTime = calculateProcessingTime(
+                  message.processingInfo.start_timestamp,
+                  message.processingInfo.end_timestamp
+                );
+                return processingTime !== null ? (
+                  <span title="Total processing time">
+                    ⏱ {formatResponseTime(processingTime)}
+                  </span>
+                ) : null;
+              })()}
+              
+              {/* Time to first token */}
+              {(() => {
+                const firstTokenTime = calculateFirstTokenTime(
+                  message.processingInfo.start_timestamp,
+                  message.processingInfo.first_token_timestamp
+                );
+                return firstTokenTime !== null ? (
+                  <span title="Time to first token">
+                    🚀 {formatResponseTime(firstTokenTime)}
+                  </span>
+                ) : null;
+              })()}
+              
+              {/* Cache hit info */}
+              {message.cacheInfo && (
+                <span title={`Cache hits: ${message.cacheInfo.num_hits}`}>
+                  {message.cacheInfo.hit ? '💾 hit' : '💾 miss'}
+                </span>
+              )}
+            </div>
           )}
-        </span>
+        </div>
       </div>
     </div>
   );

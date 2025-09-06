@@ -2,11 +2,12 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Message, createUserMessage, createBotMessage } from '@/models';
-import { Header, MessageList, ChatInput } from '@/components';
+import { Header, MessageList, ChatInput, InfoStats } from '@/components';
+import { fetchMessageStats } from '@/utils/messageStats';
 
 export default function ChatBot() {
   const [messages, setMessages] = useState<Message[]>([
-    createBotMessage('Hello! I\'m your AI assistant. How can I help you today?', '1'),
+    createBotMessage('Hi there! I am `andrewchu-1b-chat`. Ask me questions about Andrew\'s work, projects, and life. Please note my responses may be innacurate due to model size constraints and quantization. I am running on a raspberry pi 4 with 8gb of ram.', '1'),
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -26,7 +27,7 @@ export default function ChatBot() {
     e.preventDefault();
     if (!inputValue.trim() || isLoading) return;
 
-    const userMessage = createUserMessage(inputValue.trim());
+    const userMessage = createUserMessage(inputValue.trim(), undefined, true); // Enable stats for user messages
 
     setMessages(prev => [...prev, userMessage]);
     const messageContent = inputValue.trim();
@@ -40,7 +41,7 @@ export default function ChatBot() {
 
       // Create initial bot message for streaming
       const botMessageId = (Date.now() + 1).toString();
-      const initialBotMessage = createBotMessage('', botMessageId, true);
+      const initialBotMessage = createBotMessage('', botMessageId, true, true); // Enable stats for AI responses
 
       setMessages(prev => [...prev, initialBotMessage]);
       setIsWaitingForStream(false); // Hide typing bubble when stream starts
@@ -98,6 +99,27 @@ export default function ChatBot() {
                     )
                   );
                   setIsLoading(false);
+                  
+                  // Fetch processing stats for the completed message
+                  setTimeout(async () => {
+                    try {
+                      const stats = await fetchMessageStats(botMessageId);
+                      setMessages(prev => 
+                        prev.map(msg => 
+                          msg.id === botMessageId 
+                            ? { 
+                                ...msg, 
+                                processingInfo: stats.processingInfo || undefined,
+                                cacheInfo: stats.cacheInfo || undefined
+                              }
+                            : msg
+                        )
+                      );
+                    } catch (error) {
+                      console.warn('Failed to fetch processing stats:', error);
+                    }
+                  }, 1000); // Delay to allow backend to save stats
+                  
                   break;
                 } else if (data.token) {
                   // Add token to accumulated content
@@ -128,7 +150,7 @@ export default function ChatBot() {
       console.error('Error streaming response:', error);
       
       // Show error message
-      const errorMessage = createBotMessage('Sorry, there was an error getting a response. Please try again.');
+      const errorMessage = createBotMessage('Sorry, there was an error getting a response. Please try again.', undefined, false, false);
       
       setMessages(prev => [...prev, errorMessage]);
       setIsLoading(false);
@@ -145,7 +167,7 @@ export default function ChatBot() {
 
   return (
     <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
-      <Header title="AI Chatbot" chatId={chatId} />
+      <Header title="Chat with Andrew Chu!" chatId={chatId} />
       
       <MessageList 
         messages={messages}
@@ -160,6 +182,8 @@ export default function ChatBot() {
         onKeyPress={handleKeyPress}
         disabled={isLoading}
       />
+      
+      <InfoStats />
     </div>
   );
 }
