@@ -78,11 +78,11 @@ export function InfoStats() {
     <div className="px-4 py-2 border-t border-gray-100 dark:border-gray-800">
       <div className="flex items-center justify-center space-x-4 text-xs text-gray-400">
         <span>
-          {formatNumber(stats.chats_created)} chats
+          {formatNumber(stats.chats_created)} chats created
         </span>
         <span className="text-gray-300 dark:text-gray-600">•</span>
         <span>
-          {formatNumber(stats.messages_received)} messages
+          {formatNumber(stats.messages_received)} messages sent
         </span>
         <span className="text-gray-300 dark:text-gray-600">•</span>
         <span>

@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { Message, createUserMessage, createBotMessage } from '@/models';
 import { MessageProcessingInfo, MessageCacheInfo } from '@/models/chatInfo';
-import { Header, MessageList, ChatInput, InfoStats } from '@/components';
+import { Header, MessageList, ChatInput, InfoStats, Footer } from '@/components';
 
 export default function ChatBot() {
   const [messages, setMessages] = useState<Message[]>([
@@ -192,6 +192,8 @@ export default function ChatBot() {
       />
       
       <InfoStats />
+      
+      <Footer />
     </div>
   );
 }

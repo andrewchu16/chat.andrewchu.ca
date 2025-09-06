@@ -5,3 +5,4 @@ export { MessageList } from './MessageList';
 export { TypingIndicator } from './TypingIndicator';
 export { ChatInput } from './ChatInput';
 export { InfoStats } from './InfoStats';
+export { Footer } from './Footer';
