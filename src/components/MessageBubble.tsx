@@ -1,10 +1,18 @@
 import { Message } from '@/models';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeHighlight from 'rehype-highlight';
 
 interface MessageBubbleProps {
   message: Message;
 }
 
 export function MessageBubble({ message }: MessageBubbleProps) {
+  // Process the content to handle escaped newlines
+  const processedContent = message.content
+    .replace(/\\n/g, '\n')  // Convert literal \n to actual newlines
+    .replace(/\n/g, '  \n'); // Convert newlines to markdown line breaks
+
   return (
     <div
       className={`flex ${
@@ -18,9 +26,73 @@ export function MessageBubble({ message }: MessageBubbleProps) {
             : 'bg-white dark:bg-gray-800 text-gray-800 dark:text-white border border-gray-200 dark:border-gray-700'
         }`}
       >
-        <p className="text-sm whitespace-pre-wrap">
-          {message.content}
-        </p>
+        <div className="text-sm prose prose-sm max-w-none dark:prose-invert">
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            rehypePlugins={[rehypeHighlight]}
+            components={{
+              // Customize paragraph styling to preserve line breaks
+              p: ({ children }) => (
+                <p className="mb-2 last:mb-0 leading-relaxed whitespace-pre-line">{children}</p>
+              ),
+              // Customize code block styling
+              pre: ({ children }) => (
+                <pre className="bg-gray-100 dark:bg-gray-900 rounded p-2 overflow-x-auto text-xs my-2">
+                  {children}
+                </pre>
+              ),
+              // Customize inline code styling
+              code: ({ children, className }) => {
+                const isInline = !className;
+                return isInline ? (
+                  <code className="bg-gray-100 dark:bg-gray-900 px-1 rounded text-xs">
+                    {children}
+                  </code>
+                ) : (
+                  <code className={className}>{children}</code>
+                );
+              },
+              // Customize list styling
+              ul: ({ children }) => (
+                <ul className="list-disc pl-4 mb-2 space-y-1">{children}</ul>
+              ),
+              ol: ({ children }) => (
+                <ol className="list-decimal pl-4 mb-2 space-y-1">{children}</ol>
+              ),
+              // Customize heading styling
+              h1: ({ children }) => (
+                <h1 className="text-lg font-bold mb-2">{children}</h1>
+              ),
+              h2: ({ children }) => (
+                <h2 className="text-base font-bold mb-2">{children}</h2>
+              ),
+              h3: ({ children }) => (
+                <h3 className="text-sm font-bold mb-1">{children}</h3>
+              ),
+              // Customize blockquote styling
+              blockquote: ({ children }) => (
+                <blockquote className="border-l-4 border-gray-300 dark:border-gray-600 pl-3 italic my-2">
+                  {children}
+                </blockquote>
+              ),
+              // Customize link styling
+              a: ({ children, href }) => (
+                <a
+                  href={href}
+                  className="text-blue-400 hover:text-blue-300 underline"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {children}
+                </a>
+              ),
+              // Add explicit line break handling
+              br: () => <br />,
+            }}
+          >
+            {processedContent}
+          </ReactMarkdown>
+        </div>
         <span className="text-xs opacity-70 mt-1 block">
           {message.timestamp.toLocaleTimeString([], {
             hour: '2-digit',
