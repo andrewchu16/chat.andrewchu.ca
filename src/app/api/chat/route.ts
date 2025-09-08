@@ -139,6 +139,15 @@ export async function POST(request: NextRequest) {
                       });
                       controller.enqueue(`data: ${processingData}\n\n`);
                       
+                    } else if (currentEvent === 'cache_info') {
+                      const cacheData = JSON.stringify({
+                        type: 'cache_event',
+                        event: 'cache_info',
+                        data: parsedData,
+                        timestamp: new Date().toISOString()
+                      });
+                      controller.enqueue(`data: ${cacheData}\n\n`);
+                      
                     } else if (currentEvent === 'done') {
                       // Handle completion
                       if (parsedData.content === '[END]') {

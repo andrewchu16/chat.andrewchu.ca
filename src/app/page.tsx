@@ -97,12 +97,24 @@ export default function ChatBot() {
                 
                 if (data.event === 'message_created') {
                   processingInfo.message_id = data.data.message_id;
+                  // Extract cache_hit from message_created event
+                  if (data.data.cache_hit !== undefined) {
+                    cacheInfo.hit = data.data.cache_hit;
+                  }
                 } else if (data.event === 'processing_started') {
                   processingInfo.start_timestamp = data.data.start_timestamp;
+                  // Extract cache_hit from processing_started event
+                  if (data.data.cache_hit !== undefined) {
+                    cacheInfo.hit = data.data.cache_hit;
+                  }
                 } else if (data.event === 'first_token') {
                   processingInfo.first_token_timestamp = data.data.first_token_timestamp;
                 } else if (data.event === 'processing_completed') {
                   processingInfo.end_timestamp = data.data.end_timestamp;
+                  // Extract cache_hit from processing_completed event
+                  if (data.data.cache_hit !== undefined) {
+                    cacheInfo.hit = data.data.cache_hit;
+                  }
                   
                   // Update message with final processing info
                   setMessages(prev => 
@@ -112,6 +124,32 @@ export default function ChatBot() {
                             ...msg, 
                             processingInfo: processingInfo as MessageProcessingInfo,
                             cacheInfo: Object.keys(cacheInfo).length > 0 ? (cacheInfo as MessageCacheInfo) : undefined
+                          }
+                        : msg
+                    )
+                  );
+                }
+              } else if (data.type === 'cache_event') {
+                // Handle cache info events
+                console.log('Cache event:', data.event, data.data);
+                
+                if (data.event === 'cache_info') {
+                  // Store complete cache information
+                  Object.assign(cacheInfo, {
+                    id: data.data.id,
+                    message_id: data.data.message_id,
+                    hit: data.data.hit,
+                    cache_timestamp: data.data.message_timestamp,
+                    num_hits: data.data.num_hits
+                  });
+                  
+                  // Update message with cache info
+                  setMessages(prev => 
+                    prev.map(msg => 
+                      msg.id === botMessageId 
+                        ? { 
+                            ...msg, 
+                            cacheInfo: cacheInfo as MessageCacheInfo
                           }
                         : msg
                     )
