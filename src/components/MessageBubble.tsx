@@ -148,11 +148,11 @@ export function MessageBubble({ message }: MessageBubbleProps) {
                     className="opacity-60 hover:opacity-100 transition-opacity cursor-help"
                     title={`Cache ${message.cacheInfo.hit ? 'hit' : 'miss'}\n${
                       message.cacheInfo.hit 
-                        ? `This response was found in cache (hit #${message.cacheInfo.num_hits})`
+                        ? `This response was found in cache (${message.cacheInfo.num_hits} hits)`
                         : 'This response was not found in cache and was generated fresh'
                     }`}
                   >
-                    • 💾 {message.cacheInfo.hit ? 'hit' : 'miss'}
+                    • 💾 {message.cacheInfo.hit ? `${message.cacheInfo.num_hits} hits` : 'miss'}
                   </span>
                 )}
               </>
