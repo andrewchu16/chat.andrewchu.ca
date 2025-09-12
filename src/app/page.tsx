@@ -7,7 +7,8 @@ import { Header, MessageList, ChatInput, InfoStats, Footer } from '@/components'
 
 export default function ChatBot() {
   const [messages, setMessages] = useState<Message[]>([
-    createBotMessage('Hi there! I am `andrewchu-1b-chat`. Ask me questions about Andrew\'s work, projects, and life. Please note my responses may be innacurate due to model size constraints and quantization. I am running on a raspberry pi 4 with 8gb of ram.', '1'),
+    // createBotMessage('Hi there! I am `andrewchu-1b-chat`. Ask me questions about Andrew\'s work, projects, and life. Please note my responses may be innacurate due to model size constraints and quantization. I am running on a raspberry pi 4 with 8gb of ram. ', '1'),
+    createBotMessage('Hi there! I am `andrewchu-1b-chat`. **I have not been fine-tuned yet.** Please note my responses may be innacurate due to model size constraints and quantization. I am running on a raspberry pi 4 with 8gb of ram.', '1'),
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isLoading, setIsLoading] = useState(false);
